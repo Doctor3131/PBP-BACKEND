@@ -1,4 +1,5 @@
 require('dotenv').config()
+const logger = require('../logger')
 
 const DB_LOCATION = process.env.DB_LOCATION
 const DB_PASSWORD = process.env.DB_PASSWORD
@@ -17,7 +18,7 @@ const requiredEnvVars = ['DB_HOST', 'DB_NAME', 'DB_USER', 'DB_PASSWORD']
 const missing = requiredEnvVars.filter(v => !process.env[v])
 
 if (missing.length > 0) {
-  throw new Error('Missing env var:', missing.join(', '))
+  logger.error('Missing env var:', missing.join(', '))
 }
 
 module.exports = {
@@ -30,5 +31,5 @@ module.exports = {
   PORT,
   NODE_ENV,
   JWT_EXPIRATION,
-  JWT_SECRET
+  JWT_SECRET,
 }
