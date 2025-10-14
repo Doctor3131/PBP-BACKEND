@@ -11,8 +11,10 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "db:test": "node utils/testConnection.js",
+    "db:seed:integrated": "node database/seeds/runIntegratedSeed.js",
     "db:migrate": "node utils/dbMigrate.js",
-    "db:backup": "node utils/dbBackup.js"
+    "db:backup": "node utils/dbBackup.js",
+    "db:reset": "node utils/resetDb.js"
   },
   "repository": {
     "type": "git",

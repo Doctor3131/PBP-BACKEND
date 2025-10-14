@@ -215,7 +215,7 @@ const seedUsers = async (client) => {
     )
   }
 
-  logger.info(`✓ ${USERS.length} users seeded`)
+  logger.info(`${USERS.length} users seeded`)
 }
 
 const seedCategories = async (client) => {
@@ -228,7 +228,7 @@ const seedCategories = async (client) => {
     )
   }
 
-  logger.info(`✓ ${CATEGORIES.length} categories seeded`)
+  logger.info(`${CATEGORIES.length} categories seeded`)
 }
 
 const seedProducts = async (client) => {
@@ -262,7 +262,7 @@ const seedProducts = async (client) => {
     }
   }
 
-  logger.info(`✓ ${totalProducts} products seeded`)
+  logger.info(`${totalProducts} products seeded`)
 }
 
 const seedSampleCart = async (client) => {
@@ -307,7 +307,7 @@ const seedSampleCart = async (client) => {
     }
   }
 
-  logger.info('✓ Sample cart seeded')
+  logger.info('Sample cart seeded')
 }
 
 const seedSampleOrders = async (client) => {
@@ -440,18 +440,16 @@ const seedSampleOrders = async (client) => {
     }
   }
 
-  logger.info('✓ Sample orders seeded')
+  logger.info('Sample orders seeded')
 }
 
-const runKeyboardSeed = async () => {
+const runIntegratedSeed = async () => {
   const client = await pool.connect()
 
   try {
-    logger.info('')
-    logger.info('════════════════════════════════════════════')
-    logger.info('🎹 KEYBOARD STORE - Database Seeding')
-    logger.info('════════════════════════════════════════════')
-    logger.info('')
+    logger.info('--------------------------------------------')
+    logger.info('runIntegratedSeed - Database Seeding')
+    logger.info('--------------------------------------------')
 
     await client.query('BEGIN')
 
@@ -463,15 +461,15 @@ const runKeyboardSeed = async () => {
 
     await client.query('COMMIT')
 
-    logger.info('')
-    logger.info('════════════════════════════════════════════')
-    logger.info('✓ Keyboard Store seeding completed!')
-    logger.info('════════════════════════════════════════════')
-    logger.info('')
-    logger.info('🔑 Default Credentials:')
-    logger.info('  Admin: admin@keystore.com / password123')
-    logger.info('  User:  agus@example.com / password123')
-    logger.info('')
+    logger.info('--------------------------------------------')
+    logger.info('runIntegratedSeed seeding completed!')
+    logger.info('--------------------------------------------')
+    logger.info('Default Credentials:\
+      \n\t\t\t\t    Admin: admin@keystore.com / password123\
+      \n\t\t\t\t    User:  agus@example.com / password123')
+
+    // logger.info('  Admin: admin@keystore.com / password123')
+    // logger.info('  User:  agus@example.com / password123')
 
     // Statistics
     const stats = await client.query(`
@@ -484,7 +482,7 @@ const runKeyboardSeed = async () => {
       UNION ALL SELECT 'Order Items', COUNT(*) FROM order_items
     `)
 
-    logger.info('📊 Database Statistics:')
+    logger.info('Database Statistics:')
     stats.rows.forEach(row => {
       logger.info(`  ${row.table_name.padEnd(15)}: ${row.count}`)
     })
@@ -499,19 +497,16 @@ const runKeyboardSeed = async () => {
       ORDER BY count DESC
     `)
 
-    logger.info('')
-    logger.info('📦 Products by Category:')
+    logger.info('Products by Category:')
     productStats.rows.forEach(row => {
       if (row.count > 0) {
         logger.info(`  ${row.category.padEnd(20)}: ${row.count} items (Rp ${(row.min_price / 1000).toFixed(0)}K - Rp ${(row.max_price / 1000).toFixed(0)}K)`)
       }
     })
 
-    logger.info('')
-
   } catch (error) {
     await client.query('ROLLBACK')
-    logger.error('❌ Error seeding database:', error)
+    logger.error('Error seeding database:', error)
     throw error
   } finally {
     client.release()
@@ -520,15 +515,15 @@ const runKeyboardSeed = async () => {
 }
 
 if (require.main === module) {
-  runKeyboardSeed()
+  runIntegratedSeed()
     .then(() => {
-      logger.info('✓ Seed script completed successfully')
+      logger.info('Seed script completed successfully')
       process.exit(0)
     })
     .catch((error) => {
-      logger.error('❌ Seed script failed:', error)
+      logger.error('Seed script failed:', error)
       process.exit(1)
     })
 }
 
-module.exports = runKeyboardSeed
+module.exports = runIntegratedSeed
