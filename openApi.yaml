@@ -1,0 +1,1117 @@
+openapi: 3.0.3
+info:
+  title: E-Commerce API
+  description: RESTful API untuk aplikasi e-commerce dengan fitur manajemen produk, keranjang, dan pesanan
+  version: 1.0.0
+  contact:
+    name: Siriel Wafa Nuriel Fahri
+    email: support@example.com
+
+servers:
+  - url: http://localhost:3000/api/v1
+    description: Development server
+  - url: https://api.example.com/api/v1
+    description: Production server
+
+tags:
+  - name: Auth
+    description: Autentikasi dan manajemen user
+  - name: Products
+    description: Operasi terkait produk
+  - name: Categories
+    description: Operasi terkait kategori
+  - name: Cart
+    description: Manajemen keranjang belanja
+  - name: Orders
+    description: Manajemen pesanan
+  - name: Admin
+    description: Operasi khusus admin
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+        errors:
+          type: array
+          items:
+            type: object
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum: [customer, admin]
+        created_at:
+          type: string
+          format: date-time
+
+    Category:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    Product:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        price:
+          type: number
+          format: decimal
+        stock:
+          type: integer
+        category_id:
+          type: integer
+        category_name:
+          type: string
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    CartItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        product_id:
+          type: integer
+        product_name:
+          type: string
+        price:
+          type: number
+        qty:
+          type: integer
+        subtotal:
+          type: number
+
+    Order:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+        total:
+          type: number
+        status:
+          type: string
+          enum: [Pending, Processing, Shipped, Completed, Cancelled]
+        address_text:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderItem"
+
+    OrderItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        product_id:
+          type: integer
+        product_name:
+          type: string
+        price:
+          type: number
+        qty:
+          type: integer
+        subtotal:
+          type: number
+
+paths:
+  # ==================== AUTH ====================
+  /auth/register:
+    post:
+      tags:
+        - Auth
+      summary: Register user baru
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - email
+                - password
+              properties:
+                name:
+                  type: string
+                  example: John Doe
+                email:
+                  type: string
+                  format: email
+                  example: john@example.com
+                password:
+                  type: string
+                  format: password
+                  minLength: 6
+                  example: password123
+      responses:
+        "201":
+          description: User berhasil didaftarkan
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: User registered successfully
+                  data:
+                    type: object
+                    properties:
+                      user:
+                        $ref: "#/components/schemas/User"
+                      token:
+                        type: string
+        "400":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Email sudah terdaftar
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /auth/login:
+    post:
+      tags:
+        - Auth
+      summary: Login user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: john@example.com
+                password:
+                  type: string
+                  format: password
+                  example: password123
+      responses:
+        "200":
+          description: Login berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Login successful
+                  data:
+                    type: object
+                    properties:
+                      user:
+                        $ref: "#/components/schemas/User"
+                      token:
+                        type: string
+        "401":
+          description: Kredensial tidak valid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /auth/profile:
+    get:
+      tags:
+        - Auth
+      summary: Get user profile
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Profile berhasil diambil
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: "#/components/schemas/User"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # ==================== CATEGORIES ====================
+  /categories:
+    get:
+      tags:
+        - Categories
+      summary: Get semua kategori
+      responses:
+        "200":
+          description: Daftar kategori
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Category"
+
+    post:
+      tags:
+        - Categories
+      summary: Tambah kategori baru (Admin only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  example: Electronics
+      responses:
+        "201":
+          description: Kategori berhasil dibuat
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                  data:
+                    $ref: "#/components/schemas/Category"
+        "403":
+          description: Forbidden - Admin only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /categories/{id}:
+    put:
+      tags:
+        - Categories
+      summary: Update kategori (Admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+      responses:
+        "200":
+          description: Kategori berhasil diupdate
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                  data:
+                    $ref: "#/components/schemas/Category"
+        "404":
+          description: Kategori tidak ditemukan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    delete:
+      tags:
+        - Categories
+      summary: Hapus kategori (Admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Kategori berhasil dihapus
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+        "404":
+          description: Kategori tidak ditemukan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # ==================== PRODUCTS ====================
+  /products:
+    get:
+      tags:
+        - Products
+      summary: Get daftar produk dengan filter dan pencarian
+      description: |
+        User Story #1: Melihat daftar produk
+        User Story #2: Mencari produk berdasarkan nama atau kategori
+      parameters:
+        - name: search
+          in: query
+          description: Cari berdasarkan nama produk
+          schema:
+            type: string
+        - name: category_id
+          in: query
+          description: Filter berdasarkan kategori
+          schema:
+            type: integer
+        - name: page
+          in: query
+          description: Nomor halaman
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          description: Jumlah item per halaman
+          schema:
+            type: integer
+            default: 20
+        - name: sort
+          in: query
+          description: Sorting (price_asc, price_desc, name_asc, name_desc, newest)
+          schema:
+            type: string
+            enum: [price_asc, price_desc, name_asc, name_desc, newest]
+      responses:
+        "200":
+          description: Daftar produk
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Product"
+                  pagination:
+                    type: object
+                    properties:
+                      page:
+                        type: integer
+                      limit:
+                        type: integer
+                      total:
+                        type: integer
+                      total_pages:
+                        type: integer
+
+    post:
+      tags:
+        - Products
+      summary: Tambah produk baru (Admin only)
+      description: User Story #6 - Admin menambah produk
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - price
+                - stock
+                - category_id
+              properties:
+                name:
+                  type: string
+                  example: Laptop ASUS
+                price:
+                  type: number
+                  example: 5000000
+                stock:
+                  type: integer
+                  example: 10
+                category_id:
+                  type: integer
+                  example: 1
+                is_active:
+                  type: boolean
+                  default: true
+      responses:
+        "201":
+          description: Produk berhasil dibuat
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                  data:
+                    $ref: "#/components/schemas/Product"
+        "403":
+          description: Forbidden - Admin only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /products/{id}:
+    get:
+      tags:
+        - Products
+      summary: Get detail produk
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Detail produk
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: "#/components/schemas/Product"
+        "404":
+          description: Produk tidak ditemukan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    put:
+      tags:
+        - Products
+      summary: Update produk (Admin only)
+      description: User Story #6 - Admin mengedit produk
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                price:
+                  type: number
+                stock:
+                  type: integer
+                category_id:
+                  type: integer
+                is_active:
+                  type: boolean
+      responses:
+        "200":
+          description: Produk berhasil diupdate
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                  data:
+                    $ref: "#/components/schemas/Product"
+        "404":
+          description: Produk tidak ditemukan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    delete:
+      tags:
+        - Products
+      summary: Hapus produk (Admin only)
+      description: User Story #6 - Admin menghapus produk
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Produk berhasil dihapus
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+        "404":
+          description: Produk tidak ditemukan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # ==================== CART ====================
+  /cart:
+    get:
+      tags:
+        - Cart
+      summary: Get keranjang belanja user
+      description: User Story #4 - Melihat keranjang
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Isi keranjang
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      cart_id:
+                        type: integer
+                      items:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/CartItem"
+                      total:
+                        type: number
+
+    post:
+      tags:
+        - Cart
+      summary: Tambah item ke keranjang
+      description: User Story #3 - Menambahkan produk ke keranjang
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - product_id
+                - qty
+              properties:
+                product_id:
+                  type: integer
+                  example: 1
+                qty:
+                  type: integer
+                  minimum: 1
+                  example: 2
+      responses:
+        "201":
+          description: Item berhasil ditambahkan ke keranjang
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                  data:
+                    $ref: "#/components/schemas/CartItem"
+        "400":
+          description: Stok tidak cukup
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /cart/items/{id}:
+    put:
+      tags:
+        - Cart
+      summary: Update jumlah item di keranjang
+      description: User Story #4 - Mengubah jumlah item
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Cart item ID
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - qty
+              properties:
+                qty:
+                  type: integer
+                  minimum: 1
+                  example: 3
+      responses:
+        "200":
+          description: Item berhasil diupdate
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                  data:
+                    $ref: "#/components/schemas/CartItem"
+        "404":
+          description: Item tidak ditemukan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    delete:
+      tags:
+        - Cart
+      summary: Hapus item dari keranjang
+      description: User Story #4 - Menghapus item
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Cart item ID
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Item berhasil dihapus
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+        "404":
+          description: Item tidak ditemukan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /cart/clear:
+    delete:
+      tags:
+        - Cart
+      summary: Kosongkan keranjang
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Keranjang berhasil dikosongkan
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+
+  # ==================== ORDERS ====================
+  /orders:
+    get:
+      tags:
+        - Orders
+      summary: Get daftar pesanan user
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          description: Filter berdasarkan status
+          schema:
+            type: string
+            enum: [Pending, Processing, Shipped, Completed, Cancelled]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        "200":
+          description: Daftar pesanan
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Order"
+                  pagination:
+                    type: object
+                    properties:
+                      page:
+                        type: integer
+                      limit:
+                        type: integer
+                      total:
+                        type: integer
+                      total_pages:
+                        type: integer
+
+    post:
+      tags:
+        - Orders
+      summary: Checkout - buat pesanan baru
+      description: User Story #5 - Checkout dengan mengisi alamat
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - address_text
+              properties:
+                address_text:
+                  type: string
+                  example: Jl. Sudirman No. 123, Jakarta Pusat, DKI Jakarta 10110
+      responses:
+        "201":
+          description: Pesanan berhasil dibuat
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                  data:
+                    $ref: "#/components/schemas/Order"
+        "400":
+          description: Keranjang kosong atau stok tidak cukup
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /orders/{id}:
+    get:
+      tags:
+        - Orders
+      summary: Get detail pesanan
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Detail pesanan
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: "#/components/schemas/Order"
+        "404":
+          description: Pesanan tidak ditemukan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # ==================== ADMIN ====================
+  /admin/orders:
+    get:
+      tags:
+        - Admin
+      summary: Get semua pesanan (Admin only)
+      description: User Story #7 - Admin melihat daftar pesanan
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [Pending, Processing, Shipped, Completed, Cancelled]
+        - name: user_id
+          in: query
+          schema:
+            type: integer
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: Daftar semua pesanan
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Order"
+                  pagination:
+                    type: object
+                    properties:
+                      page:
+                        type: integer
+                      limit:
+                        type: integer
+                      total:
+                        type: integer
+                      total_pages:
+                        type: integer
+
+  /admin/orders/{id}/status:
+    patch:
+      tags:
+        - Admin
+      summary: Update status pesanan (Admin only)
+      description: User Story #8 - Admin mengubah status pesanan
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+              properties:
+                status:
+                  type: string
+                  enum: [Pending, Processing, Shipped, Completed, Cancelled]
+                  example: Processing
+      responses:
+        "200":
+          description: Status pesanan berhasil diupdate
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                  data:
+                    $ref: "#/components/schemas/Order"
+        "404":
+          description: Pesanan tidak ditemukan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /admin/dashboard:
+    get:
+      tags:
+        - Admin
+      summary: Get statistik dashboard admin
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Statistik dashboard
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      total_orders:
+                        type: integer
+                      total_revenue:
+                        type: number
+                      pending_orders:
+                        type: integer
+                      total_products:
+                        type: integer
+                      low_stock_products:
+                        type: integer
+                      total_users:
+                        type: integer
