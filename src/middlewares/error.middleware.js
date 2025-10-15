@@ -2,19 +2,20 @@ const logger = require('../../utils/logger')
 const { AppError } = require('../utils/error.util')
 
 const errorMiddleware = (err, req, res, next) => {
-  logger.error(err.message, {
-    stack: err.stack,
-    url: req.originalUrl,
-    method: req.method,
-  })
 
   const getShortStack = (stack) => {
     if (!stack) return ''
 
     const lines = stack.split('\n')
 
-    return lines.slice(0, 4).join('\n')
+    return lines.slice(0, 2).join('\n')
   }
+
+  logger.error(err.message, {
+    stack: getShortStack(err.stack),
+    url: req.originalUrl,
+    method: req.method,
+  })
 
   if (err instanceof AppError) {
     return res.status(err.statusCode).json({
