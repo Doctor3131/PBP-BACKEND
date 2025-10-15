@@ -8,6 +8,14 @@ const errorMiddleware = (err, req, res, next) => {
     method: req.method,
   })
 
+  const getShortStack = (stack) => {
+    if (!stack) return ''
+
+    const lines = stack.split('\n')
+
+    return lines.slice(0, 4).join('\n')
+  }
+
   if (err instanceof AppError) {
     return res.status(err.statusCode).json({
       success: false,

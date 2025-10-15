@@ -1,311 +1,273 @@
-const request = require('supertest')
-const app = require('../../../src/app')
-const pool = require('../../../utils/config/database')
+const authService = require('../../../src/services/auth.service')
+const userRepository = require('../../../src/repositories/user.repository')
+const { hashPassword, comparePassword } = require('../../../src/utils/hash.util')
+const { generateToken, verifyToken } = require('../../../src/utils/jwt.util')
+const { UnauthorizedError, ConflictError, NotFoundError } = require('../../../src/utils/error.util')
 
-describe('Auth API Tests', () => {
-  const testUser = {
-    name: 'Test User',
-    email: 'testuser@example.com',
-    password: 'Test123456',
-    role: 'customer',
-  }
+jest.mock('../../../src/repositories/user.repository')
+jest.mock('../../../src/utils/hash.util')
+jest.mock('../../../src/utils/jwt.util')
 
-  let authToken = null
-  let testUserId = null
-
-  const deleteTestUser = async () => {
-    try {
-      const result = await pool.query(
-        'DELETE FROM users WHERE email = $1 RETURNING id',
-        [testUser.email],
-      )
-
-      if (result.rows.length > 0) {
-        console.log(`Deleted test user with ID: ${result.rows[0].id}`)
-      }
-    } catch (error) {
-      console.error('Error deleting test user:', error.message)
-    }
-  }
-
-  const checkTestUserExists = async () => {
-    try {
-      const result = await pool.query(
-        'SELECT id, email FROM users WHERE email = $1',
-        [testUser.email],
-      )
-
-      return result.rows[0] || null
-    } catch (error) {
-      console.error('Error checking test user:', error.message)
-
-      return null
-    }
-  }
-
-  beforeAll(async () => {
-    const existingUser = await checkTestUserExists()
-
-    if (existingUser) {
-      console.log(`Test user already exists with ID: ${existingUser.id}. Deleting...`)
-      await deleteTestUser()
-    }
-
-    console.log('Setup complete: Database is ready for tests')
+describe('Auth Service Tests', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
   })
 
-  afterAll(async () => {
-    await deleteTestUser()
+  describe('registerUser', () => {
+    const name = 'Test User'
+    const email = 'test@example.com'
+    const password = 'password123'
+    const hashedPassword = 'hashed_password_123'
+    const mockUser = {
+      id: 1,
+      name,
+      email,
+      role: 'customer',
+      created_at: new Date(),
+    }
+    const mockToken = 'mock_jwt_token'
 
-    await pool.end()
-
-    console.log('Cleanup complete: Test data removed and connections closed')
-  })
-
-  describe('POST /api/v1/auth/register', () => {
     it('should register a new user successfully', async () => {
-      const response = await request(app)
-        .post('/api/v1/auth/register')
-        .send({
-          name: testUser.name,
-          email: testUser.email,
-          password: testUser.password,
-        })
-        .expect(201)
+      userRepository.findByEmail.mockResolvedValue(null)
+      hashPassword.mockResolvedValue(hashedPassword)
+      userRepository.create.mockResolvedValue(mockUser)
+      generateToken.mockReturnValue(mockToken)
 
-      expect(response.body.success).toBe(true)
-      expect(response.body.message).toBe('User registered successfully')
-      expect(response.body.data).toHaveProperty('user')
-      expect(response.body.data).toHaveProperty('token')
-      expect(response.body.data.user.email).toBe(testUser.email)
-      expect(response.body.data.user.name).toBe(testUser.name)
-      expect(response.body.data.user.role).toBe('customer')
-      expect(response.body.data.user).not.toHaveProperty('password_hash')
+      const result = await authService.registerUser(name, email, password)
 
-      testUserId = response.body.data.user.id
-      authToken = response.body.data.token
+      expect(userRepository.findByEmail).toHaveBeenCalledWith(email)
+      expect(hashPassword).toHaveBeenCalledWith(password)
+      expect(userRepository.create).toHaveBeenCalledWith({
+        name,
+        email,
+        passwordHash: hashedPassword,
+        role: 'customer',
+      })
+      expect(generateToken).toHaveBeenCalledWith({
+        userId: mockUser.id,
+        role: mockUser.role,
+      })
+      expect(result).toEqual({
+        user: mockUser,
+        token: mockToken,
+      })
     })
 
-    it('should fail to register with duplicate email', async () => {
-      const response = await request(app)
-        .post('/api/v1/auth/register')
-        .send({
-          name: 'Another User',
-          email: testUser.email,
-          password: 'AnotherPass123',
-        })
-        .expect(409)
+    it('should throw ConflictError if email already exists', async () => {
+      userRepository.findByEmail.mockResolvedValue(mockUser)
 
-      expect(response.body.success).toBe(false)
-      expect(response.body.message).toBe('Email already registered')
+      await expect(
+        authService.registerUser(name, email, password),
+      ).rejects.toThrow(ConflictError)
+
+      expect(userRepository.findByEmail).toHaveBeenCalledWith(email)
+      expect(hashPassword).not.toHaveBeenCalled()
+      expect(userRepository.create).not.toHaveBeenCalled()
+      expect(generateToken).not.toHaveBeenCalled()
     })
 
-    it('should fail to register with invalid email', async () => {
-      const response = await request(app)
-        .post('/api/v1/auth/register')
-        .send({
-          name: 'Invalid Email User',
-          email: 'invalid-email',
-          password: 'Test123456',
-        })
-        .expect(400)
+    it('should throw ConflictError with correct message', async () => {
+      userRepository.findByEmail.mockResolvedValue(mockUser)
 
-      expect(response.body.success).toBe(false)
-      expect(response.body.message).toBe('Validation failed')
+      await expect(
+        authService.registerUser(name, email, password),
+      ).rejects.toThrow('Email already registered')
     })
 
-    it('should fail to register with short password', async () => {
-      const response = await request(app)
-        .post('/api/v1/auth/register')
-        .send({
-          name: 'Short Pass User',
-          email: 'shortpass@example.com',
-          password: '12345',
-        })
-        .expect(400)
+    it('should propagate errors from userRepository.create', async () => {
+      userRepository.findByEmail.mockResolvedValue(null)
+      hashPassword.mockResolvedValue(hashedPassword)
+      userRepository.create.mockRejectedValue(new Error('Database error'))
 
-      expect(response.body.success).toBe(false)
-      expect(response.body.message).toBe('Validation failed')
+      await expect(
+        authService.registerUser(name, email, password),
+      ).rejects.toThrow('Database error')
     })
 
-    it('should fail to register with missing fields', async () => {
-      const response = await request(app)
-        .post('/api/v1/auth/register')
-        .send({
-          email: 'missing@example.com',
-        })
-        .expect(400)
+    it('should propagate errors from hashPassword', async () => {
+      userRepository.findByEmail.mockResolvedValue(null)
+      hashPassword.mockRejectedValue(new Error('Hashing failed'))
 
-      expect(response.body.success).toBe(false)
-      expect(response.body.message).toBe('Validation failed')
-    })
-
-    it('should fail to register with short name', async () => {
-      const response = await request(app)
-        .post('/api/v1/auth/register')
-        .send({
-          name: 'AB',
-          email: 'shortname@example.com',
-          password: 'Test123456',
-        })
-        .expect(400)
-
-      expect(response.body.success).toBe(false)
-      expect(response.body.message).toBe('Validation failed')
+      await expect(
+        authService.registerUser(name, email, password),
+      ).rejects.toThrow('Hashing failed')
     })
   })
 
-  describe('POST /api/v1/auth/login', () => {
-    it('should login successfully with correct credentials', async () => {
-      const response = await request(app)
-        .post('/api/v1/auth/login')
-        .send({
-          email: testUser.email,
-          password: testUser.password,
-        })
-        .expect(200)
+  describe('loginUser', () => {
+    const email = 'test@example.com'
+    const password = 'password123'
+    const mockUser = {
+      id: 1,
+      name: 'Test User',
+      email,
+      password_hash: 'hashed_password',
+      role: 'customer',
+      created_at: new Date(),
+    }
+    const mockToken = 'mock_jwt_token'
 
-      expect(response.body.success).toBe(true)
-      expect(response.body.message).toBe('Login successful')
-      expect(response.body.data).toHaveProperty('user')
-      expect(response.body.data).toHaveProperty('token')
-      expect(response.body.data.user.email).toBe(testUser.email)
-      expect(response.body.data.user).not.toHaveProperty('password_hash')
+    it('should login user successfully with valid credentials', async () => {
+      userRepository.findByEmail.mockResolvedValue(mockUser)
+      comparePassword.mockResolvedValue(true)
+      generateToken.mockReturnValue(mockToken)
 
-      // Update token for profile tests
-      authToken = response.body.data.token
+      const result = await authService.loginUser(email, password)
+
+      expect(userRepository.findByEmail).toHaveBeenCalledWith(email)
+      expect(comparePassword).toHaveBeenCalledWith(password, mockUser.password_hash)
+      expect(generateToken).toHaveBeenCalledWith({
+        userId: mockUser.id,
+        role: mockUser.role,
+      })
+      expect(result).toEqual({
+        user: {
+          id: mockUser.id,
+          name: mockUser.name,
+          email: mockUser.email,
+          role: mockUser.role,
+          created_at: mockUser.created_at,
+        },
+        token: mockToken,
+      })
     })
 
-    it('should fail to login with incorrect password', async () => {
-      const response = await request(app)
-        .post('/api/v1/auth/login')
-        .send({
-          email: testUser.email,
-          password: 'WrongPassword123',
-        })
-        .expect(401)
+    it('should not include password_hash in returned user data', async () => {
+      userRepository.findByEmail.mockResolvedValue(mockUser)
+      comparePassword.mockResolvedValue(true)
+      generateToken.mockReturnValue(mockToken)
 
-      expect(response.body.success).toBe(false)
-      expect(response.body.message).toBe('Invalid credentials')
+      const result = await authService.loginUser(email, password)
+
+      expect(result.user).not.toHaveProperty('password_hash')
     })
 
-    it('should fail to login with non-existent email', async () => {
-      const response = await request(app)
-        .post('/api/v1/auth/login')
-        .send({
-          email: 'nonexistent@example.com',
-          password: 'Test123456',
-        })
-        .expect(401)
+    it('should throw UnauthorizedError if user not found', async () => {
+      userRepository.findByEmail.mockResolvedValue(null)
 
-      expect(response.body.success).toBe(false)
-      expect(response.body.message).toBe('Invalid credentials')
+      await expect(
+        authService.loginUser(email, password),
+      ).rejects.toThrow(UnauthorizedError)
+
+      expect(userRepository.findByEmail).toHaveBeenCalledWith(email)
+      expect(comparePassword).not.toHaveBeenCalled()
+      expect(generateToken).not.toHaveBeenCalled()
     })
 
-    it('should fail to login with invalid email format', async () => {
-      const response = await request(app)
-        .post('/api/v1/auth/login')
-        .send({
-          email: 'invalid-email',
-          password: 'Test123456',
-        })
-        .expect(400)
+    it('should throw UnauthorizedError with correct message for non-existent user', async () => {
+      userRepository.findByEmail.mockResolvedValue(null)
 
-      expect(response.body.success).toBe(false)
-      expect(response.body.message).toBe('Validation failed')
+      await expect(
+        authService.loginUser(email, password),
+      ).rejects.toThrow('Invalid credentials')
     })
 
-    it('should fail to login with missing password', async () => {
-      const response = await request(app)
-        .post('/api/v1/auth/login')
-        .send({
-          email: testUser.email,
-        })
-        .expect(400)
+    it('should throw UnauthorizedError if password is invalid', async () => {
+      userRepository.findByEmail.mockResolvedValue(mockUser)
+      comparePassword.mockResolvedValue(false)
 
-      expect(response.body.success).toBe(false)
-      expect(response.body.message).toBe('Validation failed')
-    })
-  })
+      await expect(
+        authService.loginUser(email, password),
+      ).rejects.toThrow(UnauthorizedError)
 
-  describe('GET /api/v1/auth/profile', () => {
-    it('should get user profile with valid token', async () => {
-      const response = await request(app)
-        .get('/api/v1/auth/profile')
-        .set('Authorization', `Bearer ${authToken}`)
-        .expect(200)
-
-      expect(response.body.success).toBe(true)
-      expect(response.body.data).toHaveProperty('id')
-      expect(response.body.data).toHaveProperty('email')
-      expect(response.body.data).toHaveProperty('name')
-      expect(response.body.data).toHaveProperty('role')
-      expect(response.body.data.email).toBe(testUser.email)
-      expect(response.body.data.name).toBe(testUser.name)
-      expect(response.body.data).not.toHaveProperty('password_hash')
+      expect(userRepository.findByEmail).toHaveBeenCalledWith(email)
+      expect(comparePassword).toHaveBeenCalledWith(password, mockUser.password_hash)
+      expect(generateToken).not.toHaveBeenCalled()
     })
 
-    it('should fail to get profile without token', async () => {
-      const response = await request(app)
-        .get('/api/v1/auth/profile')
-        .expect(401)
+    it('should throw UnauthorizedError with correct message for invalid password', async () => {
+      userRepository.findByEmail.mockResolvedValue(mockUser)
+      comparePassword.mockResolvedValue(false)
 
-      expect(response.body.success).toBe(false)
-      expect(response.body.message).toBe('No token provided')
+      await expect(
+        authService.loginUser(email, password),
+      ).rejects.toThrow('Invalid credentials')
     })
 
-    it('should fail to get profile with invalid token', async () => {
-      const response = await request(app)
-        .get('/api/v1/auth/profile')
-        .set('Authorization', 'Bearer invalid_token_here')
-        .expect(401)
+    it('should propagate errors from userRepository.findByEmail', async () => {
+      userRepository.findByEmail.mockRejectedValue(new Error('Database error'))
 
-      expect(response.body.success).toBe(false)
-      expect(response.body.message).toBe('Invalid token')
+      await expect(
+        authService.loginUser(email, password),
+      ).rejects.toThrow('Database error')
     })
 
-    it('should fail to get profile with malformed authorization header', async () => {
-      const response = await request(app)
-        .get('/api/v1/auth/profile')
-        .set('Authorization', authToken)
-        .expect(401)
+    it('should propagate errors from comparePassword', async () => {
+      userRepository.findByEmail.mockResolvedValue(mockUser)
+      comparePassword.mockRejectedValue(new Error('Comparison failed'))
 
-      expect(response.body.success).toBe(false)
-      expect(response.body.message).toBe('No token provided')
-    })
-
-    it('should fail to get profile with expired token', async () => {
-      const expiredToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEsInJvbGUiOiJjdXN0b21lciIsImlhdCI6MTYwOTQ1OTIwMCwiZXhwIjoxNjA5NDU5MjAxfQ.invalid'
-
-      const response = await request(app)
-        .get('/api/v1/auth/profile')
-        .set('Authorization', `Bearer ${expiredToken}`)
-        .expect(401)
-
-      expect(response.body.success).toBe(false)
-      expect(['Token expired', 'Invalid token']).toContain(response.body.message)
+      await expect(
+        authService.loginUser(email, password),
+      ).rejects.toThrow('Comparison failed')
     })
   })
 
-  describe('Database State Verification', () => {
-    it('should verify test user exists in database after registration', async () => {
-      const user = await checkTestUserExists()
+  describe('getProfile', () => {
+    const userId = 1
+    const mockUser = {
+      id: userId,
+      name: 'Test User',
+      email: 'test@example.com',
+      role: 'customer',
+      created_at: new Date(),
+    }
 
-      expect(user).not.toBeNull()
-      expect(user.email).toBe(testUser.email)
-      expect(user.id).toBe(testUserId)
+    it('should return user profile successfully', async () => {
+      userRepository.findById.mockResolvedValue(mockUser)
+
+      const result = await authService.getProfile(userId)
+
+      expect(userRepository.findById).toHaveBeenCalledWith(userId)
+      expect(result).toEqual(mockUser)
     })
 
-    it('should verify user can be queried directly from database', async () => {
-      const result = await pool.query(
-        'SELECT id, name, email, role FROM users WHERE id = $1',
-        [testUserId],
-      )
+    it('should throw NotFoundError if user not found', async () => {
+      userRepository.findById.mockResolvedValue(null)
 
-      expect(result.rows.length).toBe(1)
-      expect(result.rows[0].name).toBe(testUser.name)
-      expect(result.rows[0].email).toBe(testUser.email)
-      expect(result.rows[0].role).toBe('customer')
+      await expect(
+        authService.getProfile(userId),
+      ).rejects.toThrow(NotFoundError)
+
+      expect(userRepository.findById).toHaveBeenCalledWith(userId)
+    })
+
+    it('should throw NotFoundError with correct message', async () => {
+      userRepository.findById.mockResolvedValue(null)
+
+      await expect(
+        authService.getProfile(userId),
+      ).rejects.toThrow('User profile not found')
+    })
+
+    it('should propagate errors from userRepository.findById', async () => {
+      userRepository.findById.mockRejectedValue(new Error('Database error'))
+
+      await expect(
+        authService.getProfile(userId),
+      ).rejects.toThrow('Database error')
+    })
+
+    it('should handle different user roles', async () => {
+      const adminUser = { ...mockUser, role: 'admin' }
+
+      userRepository.findById.mockResolvedValue(adminUser)
+
+      const result = await authService.getProfile(userId)
+
+      expect(result.role).toBe('admin')
+    })
+
+    it('should return complete user object without password', async () => {
+      userRepository.findById.mockResolvedValue(mockUser)
+
+      const result = await authService.getProfile(userId)
+
+      expect(result).toHaveProperty('id')
+      expect(result).toHaveProperty('name')
+      expect(result).toHaveProperty('email')
+      expect(result).toHaveProperty('role')
+      expect(result).toHaveProperty('created_at')
+      expect(result).not.toHaveProperty('password_hash')
     })
   })
 })
