@@ -1,0 +1,169 @@
+### 
+
+@baseUrl = http://localhost:3001/api/v1
+@token = token
+
+
+### 
+
+GET http://localhost:3001/health HTTP/1.1
+
+
+### Register User
+
+POST {{baseUrl}}/auth/register HTTP/1.1
+Content-Type: application/json
+
+{
+  "email": "testuser@example.com",
+  "name": "Test User",
+  "password": "Test123456"
+}
+
+
+### Register User - Duplicate Email
+
+POST {{baseUrl}}/auth/register HTTP/1.1
+Content-Type: application/json
+
+{
+  "email": "testuser@example.com",
+  "name": "Another User",
+  "password": "AnotherPass123"
+}
+
+
+### Register User - Invalid Email
+
+POST {{baseUrl}}/auth/register HTTP/1.1
+Content-Type: application/json
+
+{
+  "email": "invalid-email",
+  "name": "Invalid Email User",
+  "password": "Test123456"
+}
+
+
+### Register User - Short Password
+
+POST {{baseUrl}}/auth/register HTTP/1.1
+Content-Type: application/json
+
+{
+  "email": "shortpass@example.com",
+  "name": "Short Pass User",
+  "password": "12345"
+}
+
+
+### Register User - Missing Fields
+
+POST {{baseUrl}}/auth/register HTTP/1.1
+Content-Type: application/json
+
+{
+  "email": "missing@example.com"
+}
+
+
+### Register User - Short Name
+
+POST {{baseUrl}}/auth/register HTTP/1.1
+Content-Type: application/json
+
+{
+  "email": "shortname@example.com",
+  "name": "AB",
+  "password": "Test123456"
+}
+
+
+### Login User
+
+# @name login
+
+< {%
+  const token = client.global.get("token");
+  console.log(token);
+%}
+
+POST {{baseUrl}}/auth/login HTTP/1.1
+Content-Type: application/json
+
+{
+  "email": "testuser@example.com",
+  "password": "Test123456"
+}
+
+> {%
+  client.global.set("token", response.body.data.token);
+  const token = client.global.get("token");
+  console.log(token);
+%}
+
+
+### Login User - Wrong Password
+
+POST {{baseUrl}}/auth/login HTTP/1.1
+Content-Type: application/json
+
+{
+  "email": "testuser@example.com",
+  "password": "WrongPassword123"
+}
+
+
+### Login User - Non-existent Email
+
+POST {{baseUrl}}/auth/login HTTP/1.1
+Content-Type: application/json
+
+{
+  "email": "nonexistent@example.com",
+  "password": "Test123456"
+}
+
+
+### Login User - Invalid Email Format
+
+POST {{baseUrl}}/auth/login HTTP/1.1
+Content-Type: application/json
+
+{
+  "email": "invalid-email",
+  "password": "Test123456"
+}
+
+
+### Login User - Missing Password
+
+POST {{baseUrl}}/auth/login HTTP/1.1
+Content-Type: application/json
+
+{
+  "email": "testuser@example.com"
+}
+
+
+### Get Profile
+
+GET {{baseUrl}}/auth/profile HTTP/1.1
+Authorization: Bearer {{token}}
+
+
+### Get Profile - No Token
+
+GET {{baseUrl}}/auth/profile HTTP/1.1
+
+
+### Get Profile - Invalid Token
+
+GET {{baseUrl}}/auth/profile HTTP/1.1
+Authorization: Bearer invalid_token_here
+
+
+### Get Profile - Malformed Header
+
+GET {{baseUrl}}/auth/profile HTTP/1.1
+Authorization: {{token}}

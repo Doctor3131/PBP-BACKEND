@@ -2,19 +2,23 @@ const { ValidationError } = require('../utils/error.util')
 
 const validate = (schema) => {
   return (req, res, next) => {
-    const { error } = schema.validate(req.body, { abortEarly: false })
+    try {
+      const { error } = schema.validate(req.body, { abortEarly: false })
 
-    if (error) {
-      const errors = error.details.map(detail => ({
-        field: detail.path.join('.'),
-        message: detail.message,
-      }))
+      if (error) {
+        const errors = error.details.map(detail => ({
+          field: detail.path.join('.'),
+          message: detail.message,
+        }))
 
-      throw new ValidationError('Validation failed', errors)
+        throw new ValidationError('Validation failed', errors)
+      }
+
+      next()
+    } catch (error) {
+      next(error)
     }
-
-    next()
   }
 }
 
-module.exports = { validate }
+module.exports = validate

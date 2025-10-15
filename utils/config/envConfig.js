@@ -14,7 +14,7 @@ const JWT_EXPIRATION = process.env.JWT_EXPIRATION
 const PORT = process.env.PORT || 3000
 const NODE_ENV = process.env.NODE_ENV || 'development'
 
-const requiredEnvVars = ['DB_HOST', 'DB_NAME', 'DB_USER', 'DB_PASSWORD']
+const requiredEnvVars = ['DB_HOST', 'DB_NAME', 'DB_USER', 'DB_PASSWORD', 'JWT_SECRET']
 const missing = requiredEnvVars.filter(v => !process.env[v])
 
 if (missing.length > 0) {

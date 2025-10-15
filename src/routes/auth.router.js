@@ -1,8 +1,8 @@
 const express = require('express')
 const router = express.Router()
 const authController = require('../controllers/auth.controller')
-const { validate } = require('../middlewares/validate.middleware')
-const { authenticate } = require('../middlewares/auth.middleware') // Untuk rute /profile
+const validate = require('../middlewares/validate.middleware')
+const { authenticate } = require('../middlewares/auth.middleware')
 const { registerSchema, loginSchema } = require('../validators/auth.validator')
 
 router.post(

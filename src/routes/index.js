@@ -1,8 +1,6 @@
-const express = require('express').Router()
+const appRouter = require('express').Router()
 
-const appRouter = express()
-
-const authRoutes = require('./auth.routes')
+const authRoutes = require('./auth.router')
 // const productRoutes = require('./product.routes')
 // const categoryRoutes = require('./category.routes')
 // const cartRoutes = require('./cart.routes')

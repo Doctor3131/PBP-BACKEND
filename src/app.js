@@ -1,5 +1,5 @@
 const express = require('express')
-// const routes = require('./routes')
+const routes = require('./routes')
 const errorMiddleware = require('./middlewares/error.middleware')
 const loggerMiddleware = require('./middlewares/logger.middleware')
 
@@ -13,7 +13,7 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })
 })
 
-// app.use('/api/v1', routes)
+app.use('/api/v1', routes)
 
 app.use((req, res) => {
   res.status(404).json({

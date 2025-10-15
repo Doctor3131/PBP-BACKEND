@@ -1,5 +1,5 @@
-const pool = require('../../utils/config/database')
-const logger = require('../../utils/logger')
+const pool = require('./config/database')
+const logger = require('./logger')
 
 const TABLES_TO_RESET = [
   'order_items',
