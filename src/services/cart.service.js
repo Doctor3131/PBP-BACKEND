@@ -1,6 +1,6 @@
 const cartRepository = require('../repositories/cart.repository')
 const productRepository = require('../repositories/product.repository')
-const { NotFoundError, BadRequestError, ConflictError } = require('../utils/errors')
+const { NotFoundError, BadRequestError, ConflictError } = require('../utils/error.util')
 
 const getCartByUserId = async (userId) => {
   let cart = await cartRepository.findByUserId(userId)

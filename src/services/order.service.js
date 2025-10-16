@@ -2,7 +2,7 @@ const orderRepository = require('../repositories/order.repository')
 const cartRepository = require('../repositories/cart.repository')
 const productRepository = require('../repositories/product.repository')
 const pool = require('../../utils/config/database')
-const { NotFoundError, BadRequestError, ForbiddenError } = require('../utils/errors')
+const { NotFoundError, BadRequestError, ForbiddenError } = require('../utils/error.util')
 const { buildPaginationResponse } = require('../utils/pagination.util')
 
 const getUserOrders = async (userId, status, pagination) => {

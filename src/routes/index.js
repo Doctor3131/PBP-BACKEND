@@ -1,17 +1,17 @@
 const appRouter = require('express').Router()
 
 const authRoutes = require('./auth.router')
-// const productRoutes = require('./product.routes')
-// const categoryRoutes = require('./category.routes')
-// const cartRoutes = require('./cart.routes')
-// const orderRoutes = require('./order.routes')
-// const adminRoutes = require('./admin.routes')
+const productRoutes = require('./product.router')
+const categoryRoutes = require('./category.router')
+const cartRoutes = require('./cart.router')
+const orderRoutes = require('./order.router')
+const adminRoutes = require('./admin.router')
 
 appRouter.use('/auth', authRoutes)
-// appRouter.use('/products', productRoutes)
-// appRouter.use('/categories', categoryRoutes)
-// appRouter.use('/cart', cartRoutes)
-// appRouter.use('/orders', orderRoutes)
-// appRouter.use('/admin', adminRoutes)
+appRouter.use('/products', productRoutes)
+appRouter.use('/categories', categoryRoutes)
+appRouter.use('/cart', cartRoutes)
+appRouter.use('/orders', orderRoutes)
+appRouter.use('/admin', adminRoutes)
 
 module.exports = appRouter
