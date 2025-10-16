@@ -1,5 +1,5 @@
 const authService = require('../services/auth.service')
-const { successResponse } = require('../utils/response.util') //
+const { successResponse } = require('../utils/response.util')
 
 const register = async (req, res, next) => {
   try {

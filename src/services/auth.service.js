@@ -1,7 +1,7 @@
 const userRepository = require('../repositories/user.repository')
-const { hashPassword, comparePassword } = require('../utils/hash.util') //
-const { generateToken } = require('../utils/jwt.util') //
-const { UnauthorizedError, ConflictError, NotFoundError } = require('../utils/error.util') //
+const { hashPassword, comparePassword } = require('../utils/hash.util')
+const { generateToken } = require('../utils/jwt.util')
+const { UnauthorizedError, ConflictError, NotFoundError } = require('../utils/error.util')
 
 const registerUser = async (name, email, password) => {
   const existingUser = await userRepository.findByEmail(email)
