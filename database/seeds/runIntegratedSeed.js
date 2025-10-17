@@ -487,7 +487,6 @@ const runIntegratedSeed = async () => {
       logger.info(`  ${row.table_name.padEnd(15)}: ${row.count}`)
     })
 
-    // Product breakdown
     const productStats = await client.query(`
       SELECT c.name as category, COUNT(p.id) as count, 
              MIN(p.price) as min_price, MAX(p.price) as max_price

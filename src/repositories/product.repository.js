@@ -39,7 +39,10 @@ const findAll = async (filters = {}, pagination = {}) => {
     newest: 'p.created_at DESC',
   }
 
-  query += ` ORDER BY ${sortMap[filters.sort] || 'p.created_at DESC'}`
+  const allowedSorts = ['price_asc', 'price_desc', 'name_asc', 'name_desc', 'newest']
+  const sortKey = allowedSorts.includes(filters.sort) ? filters.sort : 'newest'
+
+  query += ` ORDER BY ${sortMap[sortKey]}`
 
   if (pagination.limit) {
     paramCount++
