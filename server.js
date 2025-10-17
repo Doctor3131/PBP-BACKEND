@@ -1,7 +1,11 @@
 const app = require('./src/app')
+const express = require('express')
 const logger = require('./utils/logger')
 const { PORT } = require('./utils/config/envConfig')
 const testConnection = require('./utils/testConnection')
+const path = require('path')
+
+app.use('/images', express.static(path.join(__dirname, 'public/images')))
 
 const startServer = async () => {
   try {
