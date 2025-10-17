@@ -10,7 +10,7 @@ const getUserOrders = async (req, res, next) => {
 
     const result = await orderService.getUserOrders(userId, status, pagination)
 
-    return successResponse(res, result)
+    return successResponse(res, result.data, 200, null, result.pagination)
   } catch (error) {
     next(error)
   }
@@ -26,7 +26,6 @@ const getOrderById = async (req, res, next) => {
     return successResponse(res, order)
   } catch (error) {
     next(error)
-
   }
 }
 
@@ -38,7 +37,6 @@ const createOrder = async (req, res, next) => {
     const order = await orderService.createOrder(userId, address_text)
 
     return successResponse(res, order, 201, 'Order created successfully')
-
   } catch (error) {
     next(error)
   }
@@ -48,5 +46,4 @@ module.exports = {
   getUserOrders,
   getOrderById,
   createOrder,
-
 }

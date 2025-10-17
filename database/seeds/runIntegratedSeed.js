@@ -510,7 +510,10 @@ const runIntegratedSeed = async () => {
     throw error
   } finally {
     client.release()
-    await pool.end()
+
+    if (require.main === module) {
+      await pool.end()
+    }
   }
 }
 

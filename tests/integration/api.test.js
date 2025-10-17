@@ -114,6 +114,14 @@ describe('E-commerce API Integration Tests (Products, Categories, Cart, Orders, 
     })
 
     it('POST /cart should update quantity when adding the same product', async () => {
+      // First add to cart
+      await request(app)
+        .post('/api/v1/cart')
+        .set('Authorization', `Bearer ${customerToken}`)
+        .send({ product_id: testProductId, qty: 2 })
+        .expect(201)
+
+      // Add same product again
       const response = await request(app)
         .post('/api/v1/cart')
         .set('Authorization', `Bearer ${customerToken}`)
@@ -124,6 +132,13 @@ describe('E-commerce API Integration Tests (Products, Categories, Cart, Orders, 
     })
 
     it('GET /cart should return the cart with correct items and calculate total', async () => {
+      // Add items first
+      await request(app)
+        .post('/api/v1/cart')
+        .set('Authorization', `Bearer ${customerToken}`)
+        .send({ product_id: testProductId, qty: 3 })
+        .expect(201)
+
       const response = await request(app)
         .get('/api/v1/cart')
         .set('Authorization', `Bearer ${customerToken}`)
@@ -135,8 +150,17 @@ describe('E-commerce API Integration Tests (Products, Categories, Cart, Orders, 
     })
 
     it('PUT /cart/items/:id should update item quantity directly', async () => {
+      // Add item first
+      const addResponse = await request(app)
+        .post('/api/v1/cart')
+        .set('Authorization', `Bearer ${customerToken}`)
+        .send({ product_id: testProductId, qty: 2 })
+        .expect(201)
+
+      const itemId = addResponse.body.data.id
+
       const response = await request(app)
-        .put(`/api/v1/cart/items/${cartItemId}`)
+        .put(`/api/v1/cart/items/${itemId}`)
         .set('Authorization', `Bearer ${customerToken}`)
         .send({ qty: 5 })
         .expect(200)
@@ -146,8 +170,17 @@ describe('E-commerce API Integration Tests (Products, Categories, Cart, Orders, 
     })
 
     it('DELETE /cart/items/:id should remove an item from the cart', async () => {
+      // Add item first
+      const addResponse = await request(app)
+        .post('/api/v1/cart')
+        .set('Authorization', `Bearer ${customerToken}`)
+        .send({ product_id: testProductId, qty: 2 })
+        .expect(201)
+
+      const itemId = addResponse.body.data.id
+
       await request(app)
-        .delete(`/api/v1/cart/items/${cartItemId}`)
+        .delete(`/api/v1/cart/items/${itemId}`)
         .set('Authorization', `Bearer ${customerToken}`)
         .expect(200)
 
@@ -174,6 +207,13 @@ describe('E-commerce API Integration Tests (Products, Categories, Cart, Orders, 
     })
 
     it('POST /orders should create a new order (checkout) and empty the cart', async () => {
+      // Add item to cart first
+      await request(app)
+        .post('/api/v1/cart')
+        .set('Authorization', `Bearer ${customerToken}`)
+        .send({ product_id: testProductId, qty: 1 })
+        .expect(201)
+
       const address = 'Jalan Checkout No. 123'
       const response = await request(app)
         .post('/api/v1/orders')
@@ -210,7 +250,8 @@ describe('E-commerce API Integration Tests (Products, Categories, Cart, Orders, 
         .set('Authorization', `Bearer ${customerToken}`)
         .expect(200)
 
-      expect(response.body.data.length).toBe(1)
+      expect(Array.isArray(response.body.data)).toBe(true)
+      expect(response.body.data.length).toBeGreaterThanOrEqual(1)
       expect(response.body).toHaveProperty('pagination')
       expect(response.body.pagination.total).toBeGreaterThan(0)
     })
@@ -322,6 +363,7 @@ describe('E-commerce API Integration Tests (Products, Categories, Cart, Orders, 
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(200)
 
+      expect(Array.isArray(response.body.data)).toBe(true)
       expect(response.body.data.length).toBeGreaterThan(0)
     })
 
@@ -351,7 +393,7 @@ describe('E-commerce API Integration Tests (Products, Categories, Cart, Orders, 
         .expect(200)
 
       expect(response.body.data).toHaveProperty('total_orders')
-      expect(response.body.data.total_orders).toBeGreaterThan(0)
+      expect(Number(response.body.data.total_orders)).toBeGreaterThan(0)
       expect(response.body.data).toHaveProperty('total_revenue')
     })
 

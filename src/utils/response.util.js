@@ -1,4 +1,20 @@
-const successResponse = (res, data, statusCode = 200, message = null) => {
+// const successResponse = (res, data, statusCode = 200, message = null) => {
+//   const response = {
+//     success: true,
+//   }
+//
+//   if (message) {
+//     response.message = message
+//   }
+//
+//   if (data !== undefined) {
+//     response.data = data
+//   }
+//
+//   return res.status(statusCode).json(response)
+// }
+
+const successResponse = (res, data, statusCode = 200, message = null, pagination = null) => {
   const response = {
     success: true,
   }
@@ -9,6 +25,10 @@ const successResponse = (res, data, statusCode = 200, message = null) => {
 
   if (data !== undefined) {
     response.data = data
+  }
+
+  if (pagination) { // Add this block
+    response.pagination = pagination
   }
 
   return res.status(statusCode).json(response)

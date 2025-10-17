@@ -1,5 +1,4 @@
 const orderService = require('../services/order.service')
-const productService = require('../services/product.service')
 const { successResponse } = require('../utils/response.util')
 const { getPaginationParams } = require('../utils/pagination.util')
 
@@ -10,7 +9,7 @@ const getAllOrders = async (req, res, next) => {
 
     const result = await orderService.getAllOrders({ status, user_id }, pagination)
 
-    return successResponse(res, result)
+    return successResponse(res, result.data, 200, null, result.pagination)
   } catch (error) {
     next(error)
   }
@@ -49,13 +48,11 @@ const getDashboardStats = async (req, res, next) => {
   } catch (error) {
     next(error)
   }
-
 }
 
 module.exports = {
   getAllOrders,
   getOrderById,
-
   updateOrderStatus,
   getDashboardStats,
 }
