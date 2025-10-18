@@ -41,7 +41,6 @@ const resetDatabase = async () => {
     throw error
   } finally {
     client.release()
-    await pool.end()
   }
 }
 
@@ -49,10 +48,12 @@ if (require.main === module) {
   resetDatabase()
     .then(() => {
       logger.info('Database reset script finished.')
+      pool.end()
       process.exit(0)
     })
     .catch((error) => {
       logger.error('Database reset script failed.', error)
+      pool.end()
       process.exit(1)
     })
 }

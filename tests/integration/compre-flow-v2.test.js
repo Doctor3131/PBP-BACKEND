@@ -10,6 +10,7 @@ describe('Comprehensive E-commerce User Flow', () => {
   let productId
   let initialStock
   let cartId
+  let cartItemId
   let orderId
 
   const customerDetails = {
@@ -61,7 +62,7 @@ describe('Comprehensive E-commerce User Flow', () => {
     customerToken = res.body.data.token
   })
 
-  test('Step 3: should add a product to the cart', async () => {
+  test('Step 3: should add a product to the cart with a quantity of 3', async () => {
     const productsRes = await request(app)
       .get('/api/v1/products')
       .expect(200)
@@ -73,11 +74,11 @@ describe('Comprehensive E-commerce User Flow', () => {
     const addToCartRes = await request(app)
       .post('/api/v1/cart')
       .set('Authorization', `Bearer ${customerToken}`)
-      .send({ product_id: productId, qty: 1 })
+      .send({ product_id: productId, qty: 3 })
       .expect(201)
 
     expect(addToCartRes.body.success).toBe(true)
-    const cartItemId = addToCartRes.body.data.id
+    cartItemId = addToCartRes.body.data.id
 
     const cartInDb = await pool.query('SELECT * FROM carts WHERE user_id = $1', [createdUserId])
 
@@ -89,9 +90,27 @@ describe('Comprehensive E-commerce User Flow', () => {
     expect(cartItemInDb.rows.length).toBe(1)
     expect(cartItemInDb.rows[0].cart_id).toBe(cartId)
     expect(cartItemInDb.rows[0].product_id).toBe(productId)
+    expect(cartItemInDb.rows[0].qty).toBe(3)
   })
 
-  test('Step 4: should create an order from the cart (checkout)', async () => {
+  test('Step 4: should decrement the item quantity in the cart', async () => {
+    const updatedQty = 1
+    const res = await request(app)
+      .put(`/api/v1/cart/items/${cartItemId}`)
+      .set('Authorization', `Bearer ${customerToken}`)
+      .send({ qty: updatedQty })
+      .expect(200)
+
+    expect(res.body.success).toBe(true)
+    expect(res.body.data.qty).toBe(updatedQty)
+
+    const cartItemInDb = await pool.query('SELECT qty FROM cart_items WHERE id = $1', [cartItemId])
+
+    expect(cartItemInDb.rows.length).toBe(1)
+    expect(cartItemInDb.rows[0].qty).toBe(updatedQty)
+  })
+
+  test('Step 5: should create an order from the cart (checkout)', async () => {
     const checkoutRes = await request(app)
       .post('/api/v1/orders')
       .set('Authorization', `Bearer ${customerToken}`)
@@ -111,15 +130,16 @@ describe('Comprehensive E-commerce User Flow', () => {
 
     expect(orderItemInDb.rows.length).toBe(1)
     expect(orderItemInDb.rows[0].product_id).toBe(productId)
+    expect(orderItemInDb.rows[0].qty).toBe(1)
   })
 
-  test('Step 5: should verify the cart is empty after checkout', async () => {
+  test('Step 6: should verify the cart is empty after checkout', async () => {
     const cartItemsAfterCheckout = await pool.query('SELECT * FROM cart_items WHERE cart_id = $1', [cartId])
 
     expect(cartItemsAfterCheckout.rows.length).toBe(0)
   })
 
-  test('Step 6: should decrement the product stock after an order is created', async () => {
+  test('Step 7: should decrement the product stock after an order is created', async () => {
     const productAfterCheckout = await pool.query('SELECT stock FROM products WHERE id = $1', [productId])
 
     expect(productAfterCheckout.rows[0].stock).toBe(initialStock - 1)
