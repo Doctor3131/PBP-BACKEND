@@ -1,7 +1,7 @@
 const path = require('path')
 const fs = require('fs')
 const { successResponse, errorResponse } = require('../utils/response.util')
-const { NotFoundError } = require('../utils/errors')
+const { NotFoundError } = require('../utils/error.util')
 const imageDir = path.join(__dirname, '../../public/images/products')
 
 const getProductImage = (req, res, next) => {

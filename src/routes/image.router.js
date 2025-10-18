@@ -25,10 +25,17 @@ router.post(
 )
 
 router.delete(
-  '/products/:id/:number?',
+  '/products/:id/:number',
   authenticate,
   isAdmin,
   imageController.deleteProductImage,
 )
 
+router.delete(
+  '/products/:id',
+  authenticate,
+  isAdmin,
+  imageController.deleteProductImage,
+
+)
 module.exports = router
