@@ -7,6 +7,7 @@ const { upload } = require('../middlewares/upload.middleware')
 
 router.get('/products/:id', imageController.getProductImage)
 router.get('/products/:id/:number', imageController.getProductImageByNumber)
+router.get('/products/:id/info', imageController.getProductImageInfo)
 
 router.post(
   '/products/:id/upload',
@@ -36,6 +37,6 @@ router.delete(
   authenticate,
   isAdmin,
   imageController.deleteProductImage,
-
 )
+
 module.exports = router
