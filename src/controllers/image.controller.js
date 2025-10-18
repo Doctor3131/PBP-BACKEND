@@ -30,6 +30,8 @@ const findCategoryFallbackImage = async (productId) => {
     const product = await productRepository.findById(productId)
 
     if (!product || !product.category_id) {
+      logger.warn(`Product ${productId} not found or has no category`)
+
       return null
     }
 
@@ -154,7 +156,11 @@ const uploadProductImage = async (req, res, next) => {
     const product = await productRepository.findById(productId)
 
     if (!product) {
-      await fs.unlink(req.file.path)
+      try {
+        await fs.unlink(req.file.path)
+      } catch (unlinkError) {
+        logger.error(`Failed to delete uploaded file: ${unlinkError.message}`)
+      }
 
       return errorResponse(res, 'Product not found', 404)
     }
