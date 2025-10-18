@@ -5,9 +5,13 @@ const { authenticate } = require('../middlewares/auth.middleware')
 const { isAdmin } = require('../middlewares/admin.middleware')
 const { upload } = require('../middlewares/upload.middleware')
 
+// --- CORRECTED ROUTE ORDER ---
+// Specific routes first
+router.get('/products/:id/info', imageController.getProductImageInfo)
+
+// More generic routes after
 router.get('/products/:id', imageController.getProductImage)
 router.get('/products/:id/:number', imageController.getProductImageByNumber)
-router.get('/products/:id/info', imageController.getProductImageInfo)
 
 router.post(
   '/products/:id/upload',
