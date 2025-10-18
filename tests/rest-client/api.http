@@ -1,0 +1,347 @@
+### 
+
+@baseUrl = http://localhost:3001/api/v1
+
+
+### 
+
+@adminToken = =
+
+
+### 
+
+
+### 
+
+# @name healthCheck
+
+GET http://localhost:3001/health HTTP/1.1
+
+
+### =================================================================
+
+# === AUTHENTICATION
+
+
+### =================================================================
+
+
+### 
+
+# @name registerUser
+
+POST {{baseUrl}}/auth/register HTTP/1.1
+Content-Type: application/json
+
+{
+  "email": "testuser@example.com",
+  "name": "Test User",
+  "password": "password123"
+}
+
+
+### 
+
+# @name loginAdmin
+
+POST {{baseUrl}}/auth/login HTTP/1.1
+Content-Type: application/json
+
+{
+  "email": "admin@keystore.com",
+  "password": "password123"
+}
+
+> {%
+  client.global.set("adminToken", response.body.data.token);
+%}
+
+
+### 
+
+# @name loginCustomer
+
+POST {{baseUrl}}/auth/login HTTP/1.1
+Content-Type: application/json
+
+{
+  "email": "agus@example.com",
+  "password": "password123"
+}
+
+> {%
+  client.global.set("customerToken", response.body.data.token);
+%}
+
+
+### 
+
+# @name getProfile
+
+GET {{baseUrl}}/auth/profile HTTP/1.1
+Authorization: Bearer {{customerToken}}
+
+
+### =================================================================
+
+# === PRODUCTS
+
+
+### =================================================================
+
+
+### 
+
+# @name getProducts
+
+GET {{baseUrl}}/products?page=1&limit=10&sort=id_asc HTTP/1.1
+
+
+### 
+
+# @name createProduct
+
+POST {{baseUrl}}/products HTTP/1.1
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "category_id": 1,
+  "is_active": true,
+  "name": "New Test Product",
+  "price": 12345.67,
+  "stock": 100
+}
+
+
+### 
+
+# @name getProductById
+
+GET {{baseUrl}}/products/1 HTTP/1.1
+
+
+### 
+
+# @name updateProduct
+
+PUT {{baseUrl}}/products/1 HTTP/1.1
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "price": 99999.99,
+  "stock": 50
+}
+
+
+### 
+
+# @name deleteProduct
+
+DELETE {{baseUrl}}/products/1 HTTP/1.1
+Authorization: Bearer {{adminToken}}
+
+
+### =================================================================
+
+# === CATEGORIES
+
+
+### =================================================================
+
+
+### 
+
+# @name getCategories
+
+GET {{baseUrl}}/categories HTTP/1.1
+
+
+### 
+
+# @name createCategory
+
+POST {{baseUrl}}/categories HTTP/1.1
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "name": "New Test Category"
+}
+
+
+### 
+
+# @name updateCategory
+
+PUT {{baseUrl}}/categories/1 HTTP/1.1
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "name": "Updated Category Name"
+}
+
+
+### 
+
+# @name deleteCategory
+
+DELETE {{baseUrl}}/categories/1 HTTP/1.1
+Authorization: Bearer {{adminToken}}
+
+
+### =================================================================
+
+# === CART
+
+
+### =================================================================
+
+
+### 
+
+# @name getCart
+
+GET {{baseUrl}}/cart HTTP/1.1
+Authorization: Bearer {{customerToken}}
+
+
+### 
+
+# @name addToCart
+
+POST {{baseUrl}}/cart HTTP/1.1
+Content-Type: application/json
+Authorization: Bearer {{customerToken}}
+
+{
+  "product_id": 3,
+  "qty": 3
+}
+
+
+### 
+
+# @name updateCartItem
+
+PUT {{baseUrl}}/cart/items/3 HTTP/1.1
+Content-Type: application/json
+Authorization: Bearer {{customerToken}}
+
+{
+  "qty": 5
+}
+
+
+### 
+
+# @name removeCartItem
+
+DELETE {{baseUrl}}/cart/items/1 HTTP/1.1
+Authorization: Bearer {{customerToken}}
+
+
+### 
+
+# @name clearCart
+
+DELETE {{baseUrl}}/cart/clear HTTP/1.1
+Authorization: Bearer {{customerToken}}
+
+
+### =================================================================
+
+# === ORDERS
+
+
+### =================================================================
+
+
+### 
+
+# @name getUserOrders
+
+GET {{baseUrl}}/orders?status=Pending HTTP/1.1
+Authorization: Bearer {{customerToken}}
+
+
+### 
+
+# @name createOrder
+
+POST {{baseUrl}}/orders HTTP/1.1
+Content-Type: application/json
+Authorization: Bearer {{customerToken}}
+
+{
+  "address_text": "123 Test Street, Test City, 12345"
+}
+
+
+### 
+
+# @name getOrderById
+
+GET {{baseUrl}}/orders/67 HTTP/1.1
+Authorization: Bearer {{customerToken}}
+
+
+### =================================================================
+
+# === ADMIN
+
+
+### =================================================================
+
+
+### 
+
+# @name adminGetAllOrders
+
+GET {{baseUrl}}/admin/orders HTTP/1.1
+Authorization: Bearer {{adminToken}}
+
+
+### 
+
+# @name adminGetOrderById
+
+GET {{baseUrl}}/admin/orders/1 HTTP/1.1
+Authorization: Bearer {{adminToken}}
+
+
+### 
+
+# @name adminUpdateOrderStatus
+
+PATCH {{baseUrl}}/admin/orders/67/status HTTP/1.1
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "status": "Shipped"
+}
+
+
+### 
+
+# @name adminGetDashboardStats
+
+
+### 
+
+GET {{baseUrl}}/admin/dashboard HTTP/1.1
+Authorization: Bearer {{adminToken}}
+
+
+### 
+
+GET {{baseUrl}}/images/products/36 HTTP/1.1
+
+Response: (image file)
+Content-Type: image/jpeg
+
+
+### 

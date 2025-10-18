@@ -1,0 +1,1160 @@
+openapi: 3.0.3
+info:
+  title: E-commerce API
+  description: |
+    A comprehensive e-commerce REST API with authentication, product management, shopping cart, and order processing.
+
+    ## Features
+    - User authentication (register/login)
+    - Product catalog with categories
+    - Shopping cart management
+    - Order processing and tracking
+    - Admin dashboard and management
+
+    ## Authentication
+    Most endpoints require a Bearer token in the Authorization header:
+    ```
+    Authorization: Bearer <your_jwt_token>
+    ```
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@keystore.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:3001/api/v1
+    description: Development server
+  - url: https://api.keystore.com/api/v1
+    description: Production server
+
+tags:
+  - name: Authentication
+    description: User registration, login, and profile management
+  - name: Products
+    description: Product catalog and management
+  - name: Categories
+    description: Product category management
+  - name: Cart
+    description: Shopping cart operations
+  - name: Orders
+    description: Order creation and management
+  - name: Admin
+    description: Administrative operations
+
+paths:
+  /auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Register a new user
+      description: Create a new customer account
+      operationId: registerUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - email
+                - password
+              properties:
+                name:
+                  type: string
+                  minLength: 3
+                  maxLength: 255
+                  example: John Doe
+                email:
+                  type: string
+                  format: email
+                  example: john.doe@example.com
+                password:
+                  type: string
+                  minLength: 6
+                  example: SecurePass123
+            examples:
+              customer:
+                summary: Customer registration
+                value:
+                  name: Jane Smith
+                  email: jane.smith@example.com
+                  password: MyPassword123
+      responses:
+        "201":
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+              examples:
+                success:
+                  value:
+                    success: true
+                    message: User registered successfully
+                    data:
+                      user:
+                        id: 5
+                        name: Jane Smith
+                        email: jane.smith@example.com
+                        role: customer
+                        created_at: "2025-01-15T10:30:00.000Z"
+                      token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjUsInJvbGUiOiJjdXN0b21lciIsImp0aSI6ImFiYzEyMyIsImlhdCI6MTcwNTMxNzAwMCwiZXhwIjoxNzA1NDAzNDAwfQ.signature
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Login user
+      description: Authenticate user and receive JWT token
+      operationId: loginUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: admin@keystore.com
+                password:
+                  type: string
+                  example: password123
+            examples:
+              customer:
+                summary: Customer login
+                value:
+                  email: agus@example.com
+                  password: password123
+              admin:
+                summary: Admin login
+                value:
+                  email: admin@keystore.com
+                  password: password123
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+              examples:
+                success:
+                  value:
+                    success: true
+                    message: Login successful
+                    data:
+                      user:
+                        id: 1
+                        name: Admin User
+                        email: admin@keystore.com
+                        role: admin
+                        created_at: "2025-01-01T00:00:00.000Z"
+                      token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEsInJvbGUiOiJhZG1pbiIsImp0aSI6Inh5ejc4OSIsImlhdCI6MTcwNTMxNzAwMCwiZXhwIjoxNzA1NDAzNDAwfQ.signature
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+
+  /auth/profile:
+    get:
+      tags:
+        - Authentication
+      summary: Get user profile
+      description: Retrieve authenticated user's profile information
+      operationId: getUserProfile
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: "#/components/schemas/User"
+              examples:
+                customer:
+                  value:
+                    success: true
+                    data:
+                      id: 3
+                      name: Agus Santoso
+                      email: agus@example.com
+                      role: customer
+                      created_at: "2025-01-10T08:00:00.000Z"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+
+  /products:
+    get:
+      tags:
+        - Products
+      summary: Get all products
+      description: Retrieve paginated list of products with optional filtering and sorting
+      operationId: getProducts
+      parameters:
+        - name: page
+          in: query
+          description: Page number
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          example: 1
+        - name: limit
+          in: query
+          description: Items per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          example: 10
+        - name: search
+          in: query
+          description: Search products by name
+          schema:
+            type: string
+          example: keyboard
+        - name: category_id
+          in: query
+          description: Filter by category ID
+          schema:
+            type: integer
+          example: 1
+        - name: sort
+          in: query
+          description: Sort order
+          schema:
+            type: string
+            enum: [price_asc, price_desc, name_asc, name_desc, newest]
+            default: newest
+          example: price_asc
+      responses:
+        "200":
+          description: Products retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Product"
+                  pagination:
+                    $ref: "#/components/schemas/Pagination"
+              examples:
+                success:
+                  value:
+                    success: true
+                    data:
+                      - id: 1
+                        name: GMMK Pro 75% Black
+                        price: 3500000.00
+                        stock: 15
+                        category_id: 1
+                        category_name: Mechanical Keyboards
+                        is_active: true
+                        created_at: "2025-01-01T00:00:00.000Z"
+                      - id: 2
+                        name: Keychron Q1 Pro
+                        price: 2800000.00
+                        stock: 20
+                        category_id: 1
+                        category_name: Mechanical Keyboards
+                        is_active: true
+                        created_at: "2025-01-01T00:00:00.000Z"
+                    pagination:
+                      page: 1
+                      limit: 10
+                      total: 25
+                      total_pages: 3
+
+    post:
+      tags:
+        - Products
+      summary: Create new product
+      description: Create a new product (Admin only)
+      operationId: createProduct
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductInput"
+            examples:
+              keyboard:
+                summary: Create keyboard product
+                value:
+                  name: Keychron K8 Pro
+                  price: 1850000.00
+                  stock: 30
+                  category_id: 1
+                  is_active: true
+              keycap:
+                summary: Create keycap set
+                value:
+                  name: GMK Botanical
+                  price: 2500000.00
+                  stock: 10
+                  category_id: 2
+                  is_active: true
+      responses:
+        "201":
+          description: Product created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Product created successfully
+                  data:
+                    $ref: "#/components/schemas/Product"
+              examples:
+                success:
+                  value:
+                    success: true
+                    message: Product created successfully
+                    data:
+                      id: 26
+                      name: Keychron K8 Pro
+                      price: 1850000.00
+                      stock: 30
+                      category_id: 1
+                      is_active: true
+                      created_at: "2025-01-15T10:30:00.000Z"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+
+  /products/{id}:
+    get:
+      tags:
+        - Products
+      summary: Get product by ID
+      description: Retrieve detailed information about a specific product
+      operationId: getProductById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Product ID
+          schema:
+            type: integer
+          example: 1
+      responses:
+        "200":
+          description: Product details retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: "#/components/schemas/Product"
+              examples:
+                success:
+                  value:
+                    success: true
+                    data:
+                      id: 1
+                      name: GMMK Pro 75% Black
+                      price: 3500000.00
+                      stock: 15
+                      category_id: 1
+                      is_active: true
+                      created_at: "2025-01-01T00:00:00.000Z"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+
+    put:
+      tags:
+        - Products
+      summary: Update product
+      description: Update product information (Admin only)
+      operationId: updateProduct
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Product ID
+          schema:
+            type: integer
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductUpdateInput"
+            examples:
+              updatePrice:
+                summary: Update price only
+                value:
+                  price: 3200000.00
+              updateStock:
+                summary: Update stock only
+                value:
+                  stock: 25
+              fullUpdate:
+                summary: Update multiple fields
+                value:
+                  name: GMMK Pro 75% Black (Updated)
+                  price: 3200000.00
+                  stock: 25
+                  is_active: true
+      responses:
+        "200":
+          description: Product updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Product updated successfully
+                  data:
+                    $ref: "#/components/schemas/Product"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+
+    delete:
+      tags:
+        - Products
+      summary: Delete product
+      description: Delete a product (Admin only)
+      operationId: deleteProduct
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Product ID
+          schema:
+            type: integer
+          example: 26
+      responses:
+        "200":
+          description: Product deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Product deleted successfully
+                  data:
+                    type: null
+                    example: null
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+
+  /categories:
+    get:
+      tags:
+        - Categories
+      summary: Get all categories
+      description: Retrieve list of all product categories
+      operationId: getCategories
+      responses:
+        "200":
+          description: Categories retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Category"
+              examples:
+                success:
+                  value:
+                    success: true
+                    data:
+                      - id: 1
+                        name: Mechanical Keyboards
+                      - id: 2
+                        name: Keycaps
+                      - id: 3
+                        name: Switches
+                      - id: 4
+                        name: Accessories
+
+    post:
+      tags:
+        - Categories
+      summary: Create category
+      description: Create a new product category (Admin only)
+      operationId: createCategory
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  minLength: 3
+                  maxLength: 255
+                  example: Gaming Mice
+            examples:
+              category:
+                value:
+                  name: Desk Mats
+      responses:
+        "201":
+          description: Category created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Category created successfully
+                  data:
+                    $ref: "#/components/schemas/Category"
+              examples:
+                success:
+                  value:
+                    success: true
+                    message: Category created successfully
+                    data:
+                      id: 5
+                      name: Desk Mats
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+
+  /categories/{id}:
+    put:
+      tags:
+        - Categories
+      summary: Update category
+      description: Update category name (Admin only)
+      operationId: updateCategory
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Category ID
+          schema:
+            type: integer
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  minLength: 3
+                  maxLength: 255
+                  example: Premium Mechanical Keyboards
+      responses:
+        "200":
+          description: Category updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Category updated successfully
+                  data:
+                    $ref: "#/components/schemas/Category"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+
+    delete:
+      tags:
+        - Categories
+      summary: Delete category
+      description: Delete a category (Admin only)
+      operationId: deleteCategory
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Category ID
+          schema:
+            type: integer
+          example: 5
+      responses:
+        "200":
+          description: Category deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Category deleted successfully
+                  data:
+                    type: null
+                    example: null
+        "400":
+          description: Cannot delete category with products
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                message: Referenced resource not found
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+
+  /cart:
+    get:
+      tags:
+        - Cart
+      summary: Get user's cart
+      description: Retrieve current user's shopping cart with items and total
+      operationId: getCart
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Cart retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: "#/components/schemas/Cart"
+              examples:
+                withItems:
+                  summary: Cart with items
+                  value:
+                    success: true
+                    data:
+                      cart_id: 3
+                      items:
+                        - id: 15
+                          cart_id: 3
+                          product_id: 1
+                          product_name: GMMK Pro 75% Black
+                          price: 3500000.00
+                          qty: 2
+                          subtotal: 7000000.00
+                          available_stock: 15
+                        - id: 16
+                          cart_id: 3
+                          product_id: 5
+                          product_name: Gateron Yellow Switch
+                          price: 250000.00
+                          qty: 1
+                          subtotal: 250000.00
+                          available_stock: 100
+                      total: "7250000.00"
+                empty:
+                  summary: Empty cart
+                  value:
+                    success: true
+                    data:
+                      cart_id: 3
+                      items: []
+                      total: "0.00"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+
+    post:
+      tags:
+        - Cart
+      summary: Add item to cart
+      description: Add a product to the shopping cart or update quantity if already exists
+      operationId: addToCart
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - product_id
+                - qty
+              properties:
+                product_id:
+                  type: integer
+                  minimum: 1
+                  example: 1
+                qty:
+                  type: integer
+                  minimum: 1
+                  example: 2
+            examples:
+              addProduct:
+                value:
+                  product_id: 1
+                  qty: 2
+      responses:
+        "201":
+          description: Item added to cart successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Item added to cart successfully
+                  data:
+                    $ref: "#/components/schemas/CartItem"
+              examples:
+                success:
+                  value:
+                    success: true
+                    message: Item added to cart successfully
+                    data:
+                      id: 15
+                      cart_id: 3
+                      product_id: 1
+                      product_name: GMMK Pro 75% Black
+                      price: 3500000.00
+                      qty: 2
+                      subtotal: 7000000.00
+        "400":
+          description: Bad request (insufficient stock or validation error)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                insufficientStock:
+                  value:
+                    success: false
+                    message: "Insufficient stock. Available: 5"
+                productNotAvailable:
+                  value:
+                    success: false
+                    message: Product is not available
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                message: Product not found
+
+  /cart/items/{id}:
+    put:
+      tags:
+        - Cart
+      summary: Update cart item quantity
+      description: Update the quantity of a specific cart item
+      operationId: updateCartItem
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Cart item ID
+          schema:
+            type: integer
+          example: 15
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - qty
+              properties:
+                qty:
+                  type: integer
+                  minimum: 1
+                  example: 5
+            examples:
+              updateQty:
+                value:
+                  qty: 5
+      responses:
+        "200":
+          description: Cart item updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Cart item updated successfully
+                  data:
+                    $ref: "#/components/schemas/CartItem"
+              examples:
+                value:
+                  success: true
+                  message: Cart item updated successfully
+                  data:
+                    id: 15
+                    cart_id: 3
+                    product_id: 1
+                    product_name: GMMK Pro 75% Black
+                    price: 3500000.00
+                    qty: 5
+                    subtotal: 17500000.00
+        "400":
+          description: Insufficient stock
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                message: "Insufficient stock. Available: 15"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+
+    delete:
+      tags:
+        - Cart
+      summary: Remove item from cart
+      description: Remove a specific item from the shopping cart
+      operationId: removeCartItem
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Cart item ID
+          schema:
+            type: integer
+          example: 15
+      responses:
+        "200":
+          description: Item removed from cart successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Item removed from cart successfully
+                  data:
+                    type: null
+                    example: null
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+
+  /cart/clear:
+    delete:
+      tags:
+        - Cart
+      summary: Clear cart
+      description: Remove all items from the shopping cart
+      operationId: clearCart
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Cart cleared successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Cart cleared successfully
+                  data:
+                    type: null
+                    example: null
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+
+  /orders:
+    get:
+      tags:
+        - Orders
+      summary: Get user orders
+      description: Retrieve paginated list of current user's orders
+      operationId: getUserOrders
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          description: Page number
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          example: 1
+        - name: limit
+          in: query
+          description: Items per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          example: 10
+        - name: status
+          in: query
+          description: Filter by order status
+          schema:
+            type: string
+            enum: [Pending, Processing, Shipped, Completed, Cancelled]
+          example: Pending
+      responses:
+        "200":
+          description: Orders retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/OrderSummary"
+                  pagination:
+                    $ref: "#/components/schemas/Pagination"
+              examples:
+                success:
+                  value:
+                    success: true
+                    data:
+                      - id: 12
+                        u_ser_id: 3
+                        total: 7250000.00
+                        status: Pending
+                        address_text: Jl. Sudirman No. 123, Jakarta Pusat
+                        created_at: "2025-01-15T10:30:00.000Z"
+                        items:
+                          - id: 25
+                            product_id: 1
+                            product_name: GMMK Pro 75% Black
+                            price: 3500000.00
+                            qty: 2
+                            subtotal: 7000000.00
+                          - id: 26
+                            product_id: 5
+                            product_name: Gateron Yellow Switch
+                            price: 250000.00
+                            qty: 1
+                            subtotal: 250000.00
+                    pagination:
+                      page: 1
+                      limit: 10
+                      total: 3
+                      total_pages: 1
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+
+    post:
+      tags:
+        - Orders
+      summary: Create order
+      description: Create a new order from cart items (checkout)
+      operationId: createOrder
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - address_text
+              properties:
+                address_text:
+                  type: string
+                  minLength: 10
+                  maxLength: 500
+                  example: Jl. Sudirman No. 123, Jakarta Pusat, DKI Jakarta 10110
+            examples:
+              checkout:
+                value:
+                  address_text: Jl. Gatot Subroto No. 45, Bandung, Jawa Barat 40123
+      responses:
+        "201":
+          description: Order created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Order created successfully
+                  data:
+                    $ref: "#/components/schemas/Order"
+              examples:
+                success:
+                  value:
+                    success: true
+                    message: Order created successfully
+                    data:
+                      id: 13
+                      user_id: 3
+                      total: 7250000.00
+                      status: Pending
+                      address_text: Jl. Gatot Subroto No. 45, Bandung, Jawa Barat 40123
+                      created_at: "2025-01-15T11:00:00.000Z"
+                      items:
+                        - id: 27
+                          order_id: 13
+                          product_id: 1
+                          product_name: GMMK Pro 75% Black
+                          price: 3500000.00
+                          qty: 2
+                          subtotal: 7000000.00
+                        - id: 28
+                          order_id: 13
+                          product_id: 5
+                          product_name: Gateron Yellow Switch
+                          price: 250000.00
+                          qty: 1
+                          subtotal: 250000.00
+        "400":
+          description: Bad request (cart empty or insufficient stock)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                emptyCart:
+                  value:
+                    success: false
+                    message: Cart is empty
+                insufficientStock:
+                  value:
+                    success: false
+                    message: "Insufficient stock"
