@@ -334,3 +334,14 @@ Authorization: Bearer {{adminToken}}
 
 GET {{baseUrl}}/admin/dashboard HTTP/1.1
 Authorization: Bearer {{adminToken}}
+
+
+### 
+
+GET {{baseUrl}}/images/products/36 HTTP/1.1
+
+Response: (image file)
+Content-Type: image/jpeg
+
+
+### 
